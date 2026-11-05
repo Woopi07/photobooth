@@ -6,6 +6,8 @@ A photobooth that runs in the browser. Pick a layout, take your photos with a co
 - **11 layouts**: 2×6 strips (A, B), 4×6 portrait (C, D, E) and 4×6 landscape (F–K)
 - **Camera booth** with a 3, 5 or 10 second countdown, flash and shutter sound, mirror toggle and front/back camera switch. Tap any pose to retake it.
 - **Upload photos** instead of using the camera
+- **8 designed strips** with their own photo shapes (hearts, clouds) and built-in illustrations: Periwinkle Butter, Lemon Blossom, Butter Bakery, Lilac Lace, Moo Pink, Dotty Noir, Cherry Red and Midnight Blossom
+- **Use your own frame**: upload a PNG with transparent photo windows. Snapbooth finds the windows automatically and places your photos underneath.
 - **13 frames**: Snapbooth Sticker, Classic White, Noir, Lavender Dots, Strawberry Gingham, Mint Ovals, Butter Hearts, Cherry Polka, Movie Ticket, Receipt, Starry Denim, Moo Print and Film Roll
 - **8 filters**: Original, B&W, Sepia, Warm, Cool, Vintage, Dreamy and Pop
 - Your own caption and an optional date

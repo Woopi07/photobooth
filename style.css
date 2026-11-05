@@ -233,7 +233,8 @@ main {
 }
 .panel h2, .panel h3 { margin: 0 0 6px; }
 .panel h3 { font-size: 17px; margin-top: 18px; }
-.panel h3:first-child { margin-top: 0; }
+.panel h3:first-child, #frameSection h3 { margin-top: 0; }
+#frameSection[hidden] + h3 { margin-top: 0; }
 .hint { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
 
 .slot-thumbs {
@@ -479,3 +480,32 @@ main {
   .loader-logo, .twinkle, .spin, .loader-cam { animation: none; }
   .loader-bar span { animation-duration: 0.01s; }
 }
+
+/* ---------- Step 1 sections ---------- */
+.sub-head {
+  font-family: "Lilita One", Fredoka, sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  color: var(--blue);
+  margin: 32px 0 12px;
+}
+.sub-head:first-of-type { margin-top: 8px; }
+.sub-hint { margin: -6px 0 14px; color: var(--muted); }
+.design-card .thumb-box { height: 180px; }
+.design-card canvas { display: block; height: 180px; width: auto; border-radius: 4px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); }
+.custom-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--card);
+  border: 3px dashed var(--blue);
+  border-radius: var(--radius);
+  cursor: pointer;
+  max-width: 560px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.custom-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.custom-card strong { display: block; font-size: 18px; }
+.custom-card small { color: var(--muted); }
+.custom-icon { font-size: 36px; }

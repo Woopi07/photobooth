@@ -14,6 +14,7 @@
     landscape: [1800, 1200], // 6 x 4 in
   };
   const SIZE_LABEL = { strip: '2×6', portrait: '4×6', landscape: '4×6' };
+  const dims = (L) => L.dims || SIZES[L.size];
 
   const LAYOUTS = [
     { id: 'A', size: 'strip', slots: [[40, 40, 520, 390], [40, 460, 520, 390], [40, 880, 520, 390]], text: [40, 1290, 520, 470] },
@@ -238,6 +239,11 @@
   ];
   const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
+  const { designs: DESIGNS, DECO } = window.SNAPBOOTH_DESIGNS({
+    fill, rr, dots, stripes, starPath, heartPath, sprinkle, cowSpots, rng,
+    fonts: { pacifico, fredoka, playfair, bebas, courier, lilita },
+  });
+
   /* =========================================================
    * FILTERS (pixel based so they work in every browser)
    * ========================================================= */
@@ -332,7 +338,18 @@
       case 'rounded': rr(c, x, y, w, h, Math.min(w, h) * 0.08); break;
       case 'oval': c.beginPath(); c.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); break;
       case 'heart': heartPath(c, x, y, w, h); break;
+      case 'cloud': cloudPath(c, x, y, w, h); break;
       default: c.beginPath(); c.rect(x, y, w, h);
+    }
+  }
+
+  function cloudPath(c, x, y, w, h) {
+    c.beginPath();
+    const bumps = [[0.22, 0.55, 0.22], [0.4, 0.38, 0.24], [0.62, 0.36, 0.25], [0.8, 0.55, 0.2], [0.5, 0.62, 0.3], [0.3, 0.7, 0.2], [0.7, 0.72, 0.2]];
+    for (const [bx, by, br] of bumps) {
+      const cx = x + bx * w, cy = y + by * h, rx = br * w, ry = br * h * 1.25;
+      c.moveTo(cx + rx, cy);
+      c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     }
   }
 
@@ -341,6 +358,7 @@
   }
 
   function drawLabel(c, T, L) {
+    if (!L.text) return;
     const [x, y, w, h] = L.text;
     const up = (s) => (T.upper ? s.toUpperCase() : s);
     const items = [];
@@ -408,23 +426,38 @@
     c.restore();
   }
 
-  function renderInto(canvas, scale, themeId) {
-    const L = state.layout;
-    const [W, H] = SIZES[L.size];
+  function renderInto(canvas, scale, themeId, L = state.layout, withPhotos = true) {
+    const [W, H] = dims(L);
     canvas.width = Math.round(W * scale);
     canvas.height = Math.round(H * scale);
     const c = canvas.getContext('2d');
     c.setTransform(scale, 0, 0, scale, 0, 0);
-    const T = themeById(themeId);
+    const T = L.theme || themeById(themeId);
 
     c.save(); T.bg(c, W, H); c.restore();
 
-    L.slots.forEach(([x, y, w, h], i) => {
+    for (const d of L.decos || []) {
+      const [x, y, w, h] = d.r;
+      c.save(); DECO[d.kind](c, x, y, w, h); c.restore();
+      if (d.frame && T.border) {
+        c.save(); rr(c, x, y, w, h, Math.min(w, h) * 0.08);
+        c.lineWidth = T.border.w; c.strokeStyle = T.border.color; c.stroke(); c.restore();
+      }
+    }
+
+    L.slots.forEach(([x, y, w, h, slotShape], i) => {
+      const shape = slotShape || T.shape;
       c.save();
-      slotPath(c, T.shape, x, y, w, h);
+      if (shape === 'cloud' && T.border) {
+        // clouds get a solid "plate" instead of a stroke (avoids inner arc lines)
+        const b = T.border.w;
+        cloudPath(c, x - b, y - b, w + 2 * b, h + 2 * b);
+        c.fillStyle = T.border.color; c.fill();
+      }
+      slotPath(c, shape, x, y, w, h);
       c.save();
       c.clip();
-      const img = getFiltered(i);
+      const img = withPhotos ? getFiltered(i) : null;
       if (img) {
         drawCover(c, img, x, y, w, h);
       } else {
@@ -436,7 +469,7 @@
         c.fillText(String(i + 1), x + w / 2, y + h / 2);
       }
       c.restore();
-      if (T.border) {
+      if (T.border && shape !== 'cloud') {
         c.lineWidth = T.border.w;
         c.strokeStyle = T.border.color;
         c.stroke();
@@ -445,6 +478,7 @@
     });
 
     drawLabel(c, T, L);
+    if (L.overlay) c.drawImage(L.overlay, 0, 0, W, H);
     return canvas;
   }
 
@@ -460,7 +494,7 @@
   }
   function renderThemeThumbs() {
     if (!state.layout) return;
-    const scale = state.layout.size === 'strip' ? 0.07 : 0.085;
+    const scale = 150 / Math.max(...dims(state.layout)) * 0.85;
     for (const btn of $('#themeGrid').children) {
       renderInto(btn.querySelector('canvas'), scale, btn.dataset.theme);
       btn.classList.toggle('active', btn.dataset.theme === state.theme);
@@ -471,7 +505,7 @@
    * Step 1: layouts
    * ========================================================= */
   function layoutSVG(L) {
-    const [W, H] = SIZES[L.size];
+    const [W, H] = dims(L);
     const rects = L.slots.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>`).join('');
     const dh = Math.min(150, (140 * H) / W), dw = (dh * W) / H;
     return `<svg class="${L.size}" width="${dw.toFixed(1)}" height="${dh.toFixed(1)}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect width="${W}" height="${H}" fill="#1d1d1d" rx="10"/>${rects}</svg>`;
@@ -490,16 +524,111 @@
       grid.appendChild(b);
     }
   }
+  function buildDesignGrid() {
+    const grid = $('#designGrid');
+    grid.innerHTML = '';
+    for (const L of DESIGNS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'layout-card design-card';
+      b.dataset.id = L.id;
+      const n = L.slots.length;
+      b.innerHTML = `<div class="thumb-box"><canvas></canvas></div><strong>${L.name}</strong><small>Strip 2×6<br>${n} poses</small>`;
+      b.addEventListener('click', () => chooseLayout(L));
+      grid.appendChild(b);
+    }
+    renderDesignThumbs();
+  }
+  function renderDesignThumbs() {
+    for (const b of $('#designGrid').children) {
+      const L = DESIGNS.find((d) => d.id === b.dataset.id);
+      renderInto(b.querySelector('canvas'), 0.25, null, L, false);
+    }
+  }
+
+  // ---- custom PNG frame: transparent areas become photo windows ----
+  function detectWindows(img, W, H) {
+    const s = Math.min(1, 320 / Math.max(W, H));
+    const gw = Math.max(1, Math.round(W * s)), gh = Math.max(1, Math.round(H * s));
+    const cv = document.createElement('canvas');
+    cv.width = gw; cv.height = gh;
+    const cx = cv.getContext('2d');
+    cx.drawImage(img, 0, 0, gw, gh);
+    const a = cx.getImageData(0, 0, gw, gh).data;
+    const seen = new Uint8Array(gw * gh);
+    const boxes = [];
+    const minArea = gw * gh * 0.01;
+    for (let start = 0; start < gw * gh; start++) {
+      if (seen[start] || a[start * 4 + 3] >= 110) continue;
+      let x0 = gw, y0 = gh, x1 = 0, y1 = 0, count = 0;
+      const stack = [start];
+      seen[start] = 1;
+      while (stack.length) {
+        const p = stack.pop();
+        const px = p % gw, py = (p - px) / gw;
+        count++;
+        if (px < x0) x0 = px; if (px > x1) x1 = px;
+        if (py < y0) y0 = py; if (py > y1) y1 = py;
+        for (const q of [p - 1, p + 1, p - gw, p + gw]) {
+          if (q < 0 || q >= gw * gh) continue;
+          if ((q === p - 1 && px === 0) || (q === p + 1 && px === gw - 1)) continue;
+          if (!seen[q] && a[q * 4 + 3] < 110) { seen[q] = 1; stack.push(q); }
+        }
+      }
+      if (count >= minArea) boxes.push([x0, y0, x1, y1]);
+    }
+    const slots = boxes.map(([x0, y0, x1, y1]) => {
+      const x = Math.max(0, (x0 - 1) / s), y = Math.max(0, (y0 - 1) / s);
+      return [x, y, Math.min(W, (x1 + 2) / s) - x, Math.min(H, (y1 + 2) / s) - y];
+    });
+    // reading order: top-to-bottom, then left-to-right for windows on the same row
+    slots.sort((p, q) => (Math.abs(p[1] - q[1]) < Math.min(p[3], q[3]) * 0.3 ? p[0] - q[0] : p[1] - q[1]));
+    return slots;
+  }
+  async function useCustomFrame(file) {
+    if (!file) return;
+    try {
+      const src = await new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+        img.src = url;
+      });
+      const s = Math.min(1, 2400 / Math.max(src.naturalWidth, src.naturalHeight));
+      const W = Math.round(src.naturalWidth * s), H = Math.round(src.naturalHeight * s);
+      const overlay = document.createElement('canvas');
+      overlay.width = W; overlay.height = H;
+      overlay.getContext('2d').drawImage(src, 0, 0, W, H);
+      const slots = detectWindows(overlay, W, H);
+      if (!slots.length) {
+        toast('No transparent photo windows found. Use a PNG with see-through windows.');
+        return;
+      }
+      if (slots.length > 12) slots.length = 12;
+      const L = {
+        id: 'custom', name: 'Your frame', dims: [W, H], slots, overlay, text: null, custom: true,
+        size: W * 3 <= H * 1.2 ? 'strip' : 'custom',
+        theme: { bg: (c, w, h) => fill(c, w, h, '#ffffff'), empty: '#e9e9e9' },
+      };
+      toast(`Found ${slots.length} photo window${slots.length > 1 ? 's' : ''} ✨`);
+      chooseLayout(L);
+    } catch {
+      toast('Could not read that image');
+    }
+  }
+
   function chooseLayout(L) {
-    if (!state.layout || state.layout.id !== L.id) {
+    if (state.layout !== L) {
       const kept = state.photos.filter(Boolean);
       state.layout = L;
       // keep already-taken photos in order when switching layouts
       state.photos = new Array(L.slots.length).fill(null).map((_, i) => kept[i] || null);
       state.current = Math.max(0, firstEmpty());
     }
-    for (const card of $('#layoutGrid').children) card.classList.toggle('selected', card.dataset.id === L.id);
+    for (const card of [...$('#layoutGrid').children, ...$('#designGrid').children]) card.classList.toggle('selected', card.dataset.id === L.id);
     $('#doubleWrap').hidden = L.size !== 'strip';
+    $('#frameSection').hidden = !!L.theme;
     goStep(2);
   }
 
@@ -915,6 +1044,7 @@
     if (!document.fonts || !document.fonts.load) return;
     const specs = ['40px "Lilita One"', '40px Pacifico', '600 40px Fredoka', 'italic 600 40px "Playfair Display"', '40px "Bebas Neue"', '700 40px "Courier Prime"'];
     Promise.all(specs.map((s) => document.fonts.load(s).catch(() => {}))).then(() => {
+      renderDesignThumbs();
       if (state.step === 3) { renderPreview(); renderThemeThumbs(); }
     });
   }
@@ -930,6 +1060,8 @@
 
   hideLoaderWhenReady();
   buildLayoutGrid();
+  buildDesignGrid();
+  $('#frameInput').addEventListener('change', (e) => { useCustomFrame(e.target.files[0]); e.target.value = ''; });
   buildThemeGrid();
   buildFilterRow();
   bind();

@@ -69,9 +69,24 @@
     <section id="step-1" class="step">
       <div class="step-head">
         <h1>Choose your layout</h1>
-        <p>Pick a strip or a 4×6 print. You can change it later.</p>
+        <p>Pick a layout, a designed strip, or upload your own frame.</p>
       </div>
+      <h2 class="sub-head">Classic layouts</h2>
       <div id="layoutGrid" class="layout-grid"></div>
+
+      <h2 class="sub-head">Designed strips</h2>
+      <p class="sub-hint">Ready-made 2×6 strips with built-in illustrations and photo shapes.</p>
+      <div id="designGrid" class="layout-grid"></div>
+
+      <h2 class="sub-head">Use your own frame</h2>
+      <label class="custom-card">
+        <input type="file" id="frameInput" accept="image/png,image/webp" hidden>
+        <span class="custom-icon" aria-hidden="true">🖼️</span>
+        <span>
+          <strong>Upload a PNG frame</strong>
+          <small>Any size. Make the photo windows transparent and Snapbooth will find them automatically.</small>
+        </span>
+      </label>
     </section>
 
     <!-- STEP 2: SHOOT -->
@@ -124,8 +139,10 @@
         </div>
 
         <aside class="panel">
-          <h3>Frame</h3>
-          <div id="themeGrid" class="theme-grid"></div>
+          <div id="frameSection">
+            <h3>Frame</h3>
+            <div id="themeGrid" class="theme-grid"></div>
+          </div>
 
           <h3>Filter</h3>
           <div id="filterRow" class="chips"></div>
@@ -152,6 +169,7 @@
   <footer class="foot">Your photos never leave your device. Nothing is uploaded.</footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="designs.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
