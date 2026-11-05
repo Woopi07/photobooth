@@ -284,7 +284,7 @@
     showDate: true,
     double: false,
     mirror: true,
-    facing: 'user',
+    deviceId: (() => { try { return localStorage.getItem('snapbooth-camera') || ''; } catch { return ''; } })(),
     timer: 3,
     busy: false,
   };
@@ -635,27 +635,84 @@
   /* =========================================================
    * Step 2: camera & capture
    * ========================================================= */
-  async function startCamera() {
-    if (stream) return;
+  let cameraStarting = null;
+  function startCamera() {
+    if (stream) return Promise.resolve();
+    if (!cameraStarting) cameraStarting = openCamera().finally(() => { cameraStarting = null; });
+    return cameraStarting;
+  }
+  async function openCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       showCamMsg('Camera is not available in this browser.<br>Open the site over <b>https</b> (or localhost), or use “Upload photos instead”.');
       return;
     }
+    const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    const ask = (id) => navigator.mediaDevices.getUserMedia({
+      video: id ? { deviceId: { exact: id }, ...size } : { facingMode: 'user', ...size },
+      audio: false,
+    });
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: state.facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
+      let s;
+      try {
+        s = await ask(state.deviceId);
+      } catch (err) {
+        // the remembered camera may have been unplugged: fall back to the default one
+        if (!state.deviceId || err.name === 'NotAllowedError' || err.name === 'SecurityError') throw err;
+        state.deviceId = '';
+        s = await ask('');
+      }
+      if (state.step !== 2) { s.getTracks().forEach((t) => t.stop()); return; } // user left meanwhile
+      stream = s;
+      const track = stream.getVideoTracks()[0];
+      const settings = track && track.getSettings ? track.getSettings() : {};
+      if (settings.deviceId && !state.deviceId) state.deviceId = settings.deviceId;
       video.srcObject = stream;
       await video.play().catch(() => {});
       camMsg.hidden = true;
+      refreshCameraList();
     } catch (err) {
       stream = null;
       const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      const busy = err && (err.name === 'NotReadableError' || err.name === 'TrackStartError');
       showCamMsg(denied
         ? 'Camera permission was blocked.<br>Allow camera access in your browser settings and reload, or use “Upload photos instead”.'
-        : 'No camera found.<br>Connect a camera or use “Upload photos instead”.');
+        : busy
+          ? 'The camera is being used by another app.<br>Close the other app (Zoom, Teams, OBS…) or pick another camera below.'
+          : 'No camera found.<br>Connect a camera or use “Upload photos instead”.');
+      refreshCameraList();
     }
+  }
+
+  async function refreshCameraList() {
+    const wrap = $('#cameraWrap');
+    const sel = $('#cameraSelect');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { wrap.hidden = true; return; }
+    let cams = [];
+    try {
+      cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+    } catch { /* ignore */ }
+    sel.innerHTML = '';
+    cams.forEach((d, i) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId;
+      o.textContent = (d.label || `Camera ${i + 1}`).replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '');
+      sel.appendChild(o);
+    });
+    if (state.deviceId && cams.some((d) => d.deviceId === state.deviceId)) sel.value = state.deviceId;
+    wrap.hidden = cams.length < 2;
+  }
+
+  async function switchCamera(id) {
+    if (!id || id === state.deviceId) return;
+    state.deviceId = id;
+    try { localStorage.setItem('snapbooth-camera', id); } catch { /* private mode */ }
+    const label = ($('#cameraSelect').selectedOptions[0] || {}).textContent || '';
+    // back cameras shouldn't be mirrored; webcams and selfie cameras should
+    state.mirror = !/back|rear|environment|world/i.test(label);
+    $('#mirror').checked = state.mirror;
+    updateViewfinder();
+    stopCamera();
+    await startCamera();
   }
   function stopCamera() {
     if (stream) stream.getTracks().forEach((t) => t.stop());
@@ -790,7 +847,7 @@
   function setBusy(b) {
     state.busy = b;
     $('#btnSnap').disabled = b;
-    $('#btnFlip').disabled = b;
+    $('#cameraSelect').disabled = b;
     refreshSlotThumbs();
   }
 
@@ -1002,14 +1059,10 @@
     $('#fileInput').addEventListener('change', (e) => { handleUpload(e.target.files); e.target.value = ''; });
     $('#timer').addEventListener('change', (e) => { state.timer = +e.target.value; });
     $('#mirror').addEventListener('change', (e) => { state.mirror = e.target.checked; updateViewfinder(); });
-    $('#btnFlip').addEventListener('click', async () => {
-      state.facing = state.facing === 'user' ? 'environment' : 'user';
-      state.mirror = state.facing === 'user';
-      $('#mirror').checked = state.mirror;
-      updateViewfinder();
-      stopCamera();
-      await startCamera();
-    });
+    $('#cameraSelect').addEventListener('change', (e) => switchCamera(e.target.value));
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', () => { if (state.step === 2) refreshCameraList(); });
+    }
 
     $('#caption').addEventListener('input', (e) => { state.caption = e.target.value; renderPreview(); renderThemeThumbsSoon(); });
     $('#showDate').addEventListener('change', (e) => { state.showDate = e.target.checked; renderPreview(); renderThemeThumbsSoon(); });
