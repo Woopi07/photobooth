@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Snapbooth · Online Photobooth</title>
+  <meta name="description" content="Take photobooth pictures in your browser, pick a layout and frame, and save the strip to your device.">
+  <meta name="theme-color" content="#fffaf0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:wght@400;700&family=Fredoka:wght@400;500;600;700&family=Lilita+One&family=Pacifico&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- LOADING SCREEN -->
+  <div class="loader" id="loader" role="status" aria-label="Loading Snapbooth">
+    <div class="loader-inner">
+      <svg class="loader-logo" viewBox="0 0 640 330" aria-hidden="true">
+        <defs>
+          <polygon id="star" points="0,-20 5.9,-8.1 19,-6.2 9.5,3.1 11.8,16.2 0,10 -11.8,16.2 -9.5,3.1 -19,-6.2 -5.9,-8.1"/>
+          <g id="flower">
+            <circle cx="0" cy="-9" r="7"/><circle cx="8.6" cy="-2.8" r="7"/><circle cx="5.3" cy="7.3" r="7"/><circle cx="-5.3" cy="7.3" r="7"/><circle cx="-8.6" cy="-2.8" r="7"/>
+            <circle r="5" fill="#f2c94c"/>
+          </g>
+        </defs>
+        <g font-family="'Lilita One', Fredoka, sans-serif" text-anchor="middle" stroke-linejoin="round" paint-order="stroke">
+          <g font-size="160">
+            <text x="320" y="160" fill="#4f8cc9" stroke="#4f8cc9" stroke-width="40">Snap</text>
+            <text x="320" y="160" fill="#fff" stroke="#fff" stroke-width="22">Snap</text>
+            <text x="320" y="160"><tspan fill="#e0393e">S</tspan><tspan fill="#ea7d2b">n</tspan><tspan fill="#f2b632">a</tspan><tspan fill="#6cc04a">p</tspan></text>
+          </g>
+          <g font-size="128">
+            <text x="320" y="290" fill="#4f8cc9" stroke="#4f8cc9" stroke-width="36">booth</text>
+            <text x="320" y="290" fill="#fff" stroke="#fff" stroke-width="20">booth</text>
+            <text x="320" y="290"><tspan fill="#6cc04a">b</tspan><tspan fill="#4f8cc9">o</tspan><tspan fill="#f2b632">o</tspan><tspan fill="#e0393e">t</tspan><tspan fill="#ea7d2b">h</tspan></text>
+          </g>
+        </g>
+        <g class="twinkle"><use href="#star" x="70" y="70" fill="#f2c94c"/></g>
+        <g class="twinkle d2"><use href="#star" x="585" y="60" fill="#f2c94c"/></g>
+        <g class="twinkle d3"><use href="#star" x="560" y="300" fill="#f2c94c" transform="scale(0.8)" transform-origin="560 300"/></g>
+        <g class="spin"><use href="#flower" x="40" y="250" fill="#ea7d2b"/></g>
+        <g class="spin d2"><use href="#flower" x="610" y="190" fill="#e0393e"/></g>
+        <g class="spin d3"><use href="#flower" x="300" y="22" fill="#ea7d2b"/></g>
+      </svg>
+      <div class="loader-cam" aria-hidden="true">📸</div>
+      <div class="loader-bar"><span></span></div>
+      <p class="loader-text">Getting the booth ready… say cheese!</p>
+    </div>
+  </div>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Snapbooth">
+      <svg viewBox="0 0 380 92" role="img" aria-hidden="true">
+        <g font-family="'Lilita One', Fredoka, sans-serif" font-size="66" text-anchor="middle" stroke-linejoin="round" paint-order="stroke">
+          <text x="190" y="68" fill="#4f8cc9" stroke="#4f8cc9" stroke-width="18">Snapbooth</text>
+          <text x="190" y="68" fill="#fff" stroke="#fff" stroke-width="9">Snapbooth</text>
+          <text x="190" y="68"><tspan fill="#e0393e">S</tspan><tspan fill="#ea7d2b">n</tspan><tspan fill="#f2b632">a</tspan><tspan fill="#6cc04a">p</tspan><tspan fill="#4f8cc9">b</tspan><tspan fill="#e0393e">o</tspan><tspan fill="#ea7d2b">o</tspan><tspan fill="#f2b632">t</tspan><tspan fill="#6cc04a">h</tspan></text>
+        </g>
+      </svg>
+    </a>
+    <nav class="steps" aria-label="Steps">
+      <button class="step-btn" data-step="1"><span>1</span> Layout</button>
+      <button class="step-btn" data-step="2" disabled><span>2</span> Shoot</button>
+      <button class="step-btn" data-step="3" disabled><span>3</span> Design &amp; save</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- STEP 1: LAYOUT -->
+    <section id="step-1" class="step">
+      <div class="step-head">
+        <h1>Choose your layout</h1>
+        <p>Pick a strip or a 4×6 print. You can change it later.</p>
+      </div>
+      <div id="layoutGrid" class="layout-grid"></div>
+    </section>
+
+    <!-- STEP 2: SHOOT -->
+    <section id="step-2" class="step" hidden>
+      <div class="shoot">
+        <div class="cam-col">
+          <div class="viewfinder mirror" id="viewfinder">
+            <video id="video" playsinline muted autoplay></video>
+            <div class="cam-msg" id="camMsg" hidden></div>
+            <div class="countdown" id="countdown" aria-live="assertive"></div>
+            <div class="flash" id="flash"></div>
+            <div class="shot-badge" id="shotBadge">Pose 1 of 3</div>
+          </div>
+          <div class="cam-tools">
+            <label class="tool">
+              Timer
+              <select id="timer">
+                <option value="3" selected>3 s</option>
+                <option value="5">5 s</option>
+                <option value="10">10 s</option>
+              </select>
+            </label>
+            <label class="tool"><input type="checkbox" id="mirror" checked> Mirror</label>
+            <button class="tool" id="btnFlip" type="button">⟲ Switch camera</button>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <h2>Your poses</h2>
+          <p class="hint">Tap a pose to retake just that one.</p>
+          <div id="slotThumbs" class="slot-thumbs"></div>
+          <div class="actions">
+            <button id="btnStart" class="btn primary" type="button">📸 Start photobooth</button>
+            <button id="btnSnap" class="btn" type="button">Snap selected pose</button>
+            <label class="btn ghost">
+              Upload photos instead
+              <input type="file" id="fileInput" accept="image/*" multiple hidden>
+            </label>
+            <button id="btnToDesign" class="btn accent" type="button" disabled>Next: frame &amp; save →</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- STEP 3: DESIGN & SAVE -->
+    <section id="step-3" class="step" hidden>
+      <div class="design">
+        <div class="preview-wrap">
+          <canvas id="preview" aria-label="Photostrip preview"></canvas>
+        </div>
+
+        <aside class="panel">
+          <h3>Frame</h3>
+          <div id="themeGrid" class="theme-grid"></div>
+
+          <h3>Filter</h3>
+          <div id="filterRow" class="chips"></div>
+
+          <h3>Caption</h3>
+          <input id="caption" class="text-input" type="text" maxlength="40" value="Snapbooth" placeholder="Add a caption">
+          <label class="check"><input type="checkbox" id="showDate" checked> Show date</label>
+          <label class="check" id="doubleWrap"><input type="checkbox" id="doubleStrip"> Save as double strip (4×6 print sheet)</label>
+
+          <div class="save">
+            <button id="btnPng" class="btn primary" type="button">⬇ Save PNG</button>
+            <button id="btnJpg" class="btn" type="button">⬇ Save JPG</button>
+            <button id="btnShare" class="btn accent" type="button" hidden>Share / Save to Photos</button>
+          </div>
+          <div class="row">
+            <button id="btnRetake" class="btn ghost" type="button">← Retake photos</button>
+            <button id="btnRestart" class="btn ghost" type="button">Start over</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">Your photos never leave your device. Nothing is uploaded.</footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
